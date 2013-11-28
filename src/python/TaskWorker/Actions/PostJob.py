@@ -146,33 +146,64 @@ class ASOServerJob(object):
         cmdLine = 'grid-proxy-info -identity 2>/dev/null'
         dn = commands.getstatusoutput(cmdLine)[1].strip()
         # TODO: Add a method to resolve a single PFN or use resolvePFNs
-        # FIXME: This will breaks for output file name containing log string
         found_log = False
+        last_update = int(time.time())
+        now = str(datetime.datetime.now())
         for oneFile in zip(self.source_sites, self.filenames):
             if found_log:
                 lfn = "%s/%s" % (self.source_dir, oneFile[1])
             else:
                 lfn = "%s/log/%s" % (self.source_dir, oneFile[1])
                 found_log = True
-            # FIXME: need to pass publish flag, checksums, user/role/group, size through
-            doc = { '_id' : getHashLfn(lfn),
-                    'destination' : self.dest_site,
-                    'source' : oneFile[0],
-                    # TODO: Remove this if it is not required
-                    'lfn' : lfn.replace('/store/user', '/store/temp/user', 1),
-                    'retry_count' : [],
-                    'failure_reason' : [],
-                    'jobid' : self.count,
-                    'workflow': self.reqname,
-                    'publish': 0,
-                    'checksums' : {},
-                    'user' : '',
-                    'group' : '',
-                    'role' : '',
-                    'dn' : dn,
-                    'state' : 'new',
-                    'size' : '123'
-                }
+            doc_id = getHashLfn( lfn )
+            try:
+                doc = self.couchDatabase.document( doc_id )
+                doc['state'] = 'new'
+                doc['source'] = oneFile[0]
+                doc['destination'] = self.dest_site
+                doc['last_update'] = last_update
+                doc['start_time'] = now
+                doc['end_time'] = ''
+                doc['job_end_time'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+                doc['retry_count'] = []
+                doc['failure_reason'] = []
+                print "Updating doc %s for %s" % (doc_id, lfn)
+            except Exception, ex:
+                msg = "Error loading document from couch"
+                msg += str(ex)
+                msg += str(traceback.format_exc())
+                print msg
+                print "Uploading new doc for %s" % lfn
+                # FIXME: need to pass publish flag, checksums, role/group, size, inputdataset,  publish_dbs_url, dbs_url through
+                doc = { "_id": doc_id,
+                        "inputdataset": '',
+                        "group": '',
+                        # TODO: Remove this if it is not required
+                        "lfn": lfn.replace('/store/user', '/store/temp/user', 1),
+                        "checksums": {'adler32': 'abc'},
+                        "size": '123',
+                        "user": user,
+                        "source": oneFile[0],
+                        "destination": self.dest_site,
+                        "last_update": last_update,
+                        "state": "new",
+                        "role": '',
+                        "dbSource_url": "gWMS",
+                        "publish_dbs_url": 'https://cmsdbsprod.cern.ch:8443/cms_dbs_caf_analysis_02_writer/servlet/DBSServlet',
+                        "dbs_url": 'https://cmsdbsprod.cern.ch:8443/cms_dbs_prod_global/servlet/DBSServlet',
+                        "dn": dn,
+                        "workflow": self.reqname,
+                        "start_time": now,
+                        "end_time": '',
+                        "job_end_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
+                        "jobid": self.count,
+                        "retry_count": [],
+                        "failure_reason": [],
+                        "publication_state": 'not_published',
+                        "publication_retry_count": [],
+                        "type" : type,
+                        "publish" : 0
+                    }
             pprint.pprint(doc)
             allIDs.append(getHashLfn(lfn))
             if 'error' in self.couchDatabase.commitOne(doc)[0]:
