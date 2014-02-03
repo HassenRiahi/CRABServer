@@ -129,7 +129,7 @@ def getUserFromLFN(lfn):
         if lfn.split('/')[2] == 'temp':
             # /store/temp/user/$USER.$HASH/foo
             user = lfn.split('/')[4].rsplit(".", 1)[0]
-        else: 
+        else:
             # /store/user/$USER/foo
             user = lfn.split('/')[3]
     else:
@@ -240,8 +240,7 @@ class ASOServerJob(object):
                             "start_time": now,
                             "end_time": '',
                             "job_end_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
-                            "retry_count": [],
-                            "failure_reason": [],
+                            "failure_reason": []
                           }
             try:
                 doc = self.couchDatabase.document( doc_id )
@@ -263,6 +262,7 @@ class ASOServerJob(object):
                         "dbs_url": dbs_url,
                         "workflow": self.reqname,
                         "jobid": self.count,
+                        "failure_reason": []
                         "publication_state": 'not_published',
                         "publication_retry_count": [],
                         "type" : file_type,
